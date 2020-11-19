@@ -6,8 +6,9 @@ library(data.table)
 library(dplyr)
 library(plyr)
 #Read file
-yyy = fread("~/Project/Data/NiGa/uniq.TGACCA_D13_3.bedpe",header=FALSE,sep = "\t",stringsAsFactors = FALSE,quote = "")
-colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','cigar','ignore','rnaStrand','dnaStrand','rnQual','dnaQua','rnaID')
+yyy = fread("~/Project/Data/NiGa/Smol_D13.bedpe",header=FALSE,stringsAsFactors = FALSE,quote = "")
+#colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','cigar','ignore','rnaStrand','dnaStrand','rnQual','dnaQua','rnaID')
+colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','rnaID')
 
 #Make length colums
 yyy$len <- abs((yyy$dnachromStart+yyy$dnachromEnd)/2-(yyy$rnachromStart+yyy$rnachromEnd)/2)
@@ -21,12 +22,16 @@ vc <- '1'
 schr <- yyy[is.element(yyy$match,vc),]
 #########
 
+ggplot(yyy,aes(x = len))+
+  geom_histogram(aes(y = stat(count)/sum(count)))+
+  scale_y_continuous(labels = scales::percent)
 #Sort the file
-kls <- split(schr,schr$rnaID)
+kls <- split(yyy,yyy$rnaID)
+kls$GNB1
 
 ######################### Get the plots
 ###################
-setwd("~/Project/Plots/D13_3/")
+setwd("~/Project/Plots/D13/")
 
 plot_list = list()
 for (i in 1:length(kls)){
@@ -58,6 +63,17 @@ dev.off
 
 
 #######
+chr1 <- yyy[yyy$dnachrom == "chr1",]
+chr1
+ichr1 <- chr1[with(chr1,order(dnachromStart)),]
+ichr1
+size_chr1 <- 248956422
+binchr1 <- transform(ichr1, group = cut(dnachromStart,
+                                        breaks=seq(from = 0, to = 250000000, by = 20000 )))
+binchr1
+klbin <- split(binchr1,binchr1$group)
+klbin[[12400]]
 
-
-
+dt <- data.table(binchr1)
+chr1_freq <- dt[,list(Freq = .N), by = list(rnaID,group)]
+as.matrix(chr1_freq)

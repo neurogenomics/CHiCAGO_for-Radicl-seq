@@ -18,7 +18,7 @@ chrsize <- fread("~/Project/Data/NiGa/D13.sizes",header=FALSE,stringsAsFactors =
 chrsize <- chrsize[order(as.numeric(as.character(chrsize$V1)))]
 
 
-############
+############ Generating rmao file
 lit1 = NULL
 lit2 = NULL
 lit3 = NULL
@@ -98,18 +98,18 @@ for (i in 1:length(rmap_try$start)){
 write.table(data,"~/Project/Data/D13.baitmap",sep = "\t")
 write.table(rmap_try,"~/Project/Data/D13.rmap",sep = "\t")
 
-file1 = fread("~/Project/Data/mod.rmap",header = FALSE,stringsAsFactors = FALSE,quote = "")
-colnames(file1) <- c('number','chr','start','end','fragmentID')
-file1[8:15,1:5]
+#file1 = fread("~/Project/Data/mod.rmap",header = FALSE,stringsAsFactors = FALSE,quote = "")
+#colnames(file1) <- c('number','chr','start','end','fragmentID')
+#file1[8:15,1:5]
 
-for (i in 1:length(rmap_try$start)){
-  if ( file1$number[i] > 143731 ){
-    file1$fragmentID[i] = file1$number[i]
-  }
-}
+#for (i in 1:length(rmap_try$start)){
+ # if ( file1$number[i] > 143731 ){
+  #  file1$fragmentID[i] = file1$number[i]
+  #}
+#}
 
-try = file1 %>% filter(number > 143731)
-for (i in 1:length(try$number)){
-  try$baitAnnotation[i] = data$baitAnnotation[i]
-}
-try
+#try = file1 %>% filter(number > 143731)
+#for (i in 1:length(try$number)){
+ # try$baitAnnotation[i] = data$baitAnnotation[i]
+#}
+#try
