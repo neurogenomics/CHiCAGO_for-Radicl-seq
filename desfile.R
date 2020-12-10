@@ -48,19 +48,14 @@ IDs = fread("~/Project/Code/trans.bedpe",header=FALSE,stringsAsFactors = FALSE,q
 #### Generating trial baitmap file
 
 
-unqID[120]
-IDs$V1[1]
 data = filter(IDs,V4 %in% unqID)
 data = data %>% mutate_all(~gsub("chr","",.))
-data
-data[order(as)]
-sort(unqID)[10]
+
 data[,sapply(V1,is.numeric)]
 data = data[!data$V1 %in% c("X","Y"),]
 
 data <- data[with(data,order(as.numeric(V1,V2))),]
-data[data$start]
-max(data$start)
+
 
 #Naming columns in baitmap
 colnames(data) <- c('chr','start','end','baitAnnotation')
@@ -113,3 +108,51 @@ write.table(rmap_try,"~/Project/Data/D13.rmap",sep = "\t")
  # try$baitAnnotation[i] = data$baitAnnotation[i]
 #}
 #try
+################
+
+windowSize = 20000
+map = NULL
+for (whichChr in unique(yyy$rnachrom)){
+  start = seq(from=0,to=chrsize[chrsize$V1==whichChr]$V2,by=windowSize)
+  end = start+windowSize
+  some[whichChr] = rep(whichChr,length(start))
+  map[[whichChr]] = data.frame(some[whichChr],start,end)
+}
+map[[2]]
+for (i in 1:22){
+  map[[i]] <- transform(map[[i]], group = cut(end,
+                                 breaks=seq(from = 0, to = chrsize$V2[i], by = 20000 )))
+}
+df <- bind_rows(map, .id = "column_label")
+df$column_label <- NULL
+colnames(df)[1] <- 'chr'
+bait_try$group = NA
+rmap_try <- rbind(df,bait_try)
+rmap_try <- rmap_try[with(rmap_try,order(as.numeric(chr),as.numeric(start))),]
+
+rmap_try[,c(1,2,3)] <- sapply(rmap_try[,c(1,2,3)], as.numeric)
+k = (length(rmap_try$chr)-2)
+for (i in 1:k){
+  if ((rmap_try$end[i]-rmap_try$start[i]==20000)&&(rmap_try$end[i] > rmap_try$start[i+1])){
+    rmap_try[i,3] <- rmap_try[i+1,2]-1
+    #rmap_try$end[i] <- rmap_try$start[i+1]-1
+    print(i)
+  }
+}
+rmap_try
+rmap_try$fragmentID <- 1:nrow(rmap_try)
+jis = 0
+data$fragmentID <- NULL
+data[,c(1,2,3,4)] <- sapply(data[,c(1,2,3,4)], as.numeric)
+data <- data[with(data,order(as.numeric(chr),as.numeric(start))),]
+for (i in 1:length(rmap_try$start)){
+  for (j in 1:length(data$start)){
+    if ((rmap_try$end[i]-rmap_try$start[i] != 20000) &&(rmap_try$start[i] == data$start[j])){
+      data$fragmenID[j] = rmap_try$fragmentID[i]
+      #jis = jis+1
+    }
+  }
+}
+
+write.table(data,"~/Project/Data/D13.baitmap",sep = "\t")
+write.table(rmap_try,"~/Project/Data/D13.rmap",sep = "\t")
