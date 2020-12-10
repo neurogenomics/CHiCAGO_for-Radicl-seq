@@ -6,7 +6,7 @@ library(dplyr)
 library(plyr)
 library(stringr)
 #Read file
-yyy = fread("~/Project/Data/NiGa/Day13_final.bedpe",header=FALSE,stringsAsFactors = FALSE,quote = "")
+yyy = fread("~/Project/Data/NiGa/Day13_with.bedpe",header=FALSE,stringsAsFactors = FALSE,quote = "")
 #colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','cigar','ignore','rnaStrand','dnaStrand','rnQual','dnaQua','rnaID')
 colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','rnaID')
 
@@ -17,21 +17,7 @@ yyy <- yyy[with(yyy,order(as.numeric(rnachrom),as.numeric(rnachromStart))),]
 
 
 
-#Make chr1 matrix
-chr1 <- yyy[yyy$dnachrom == "chr1",]
-chr1
-ichr1 <- chr1[with(chr1,order(dnachromStart)),]
-ichr1
-size_chr1 <- 248956422
-binchr1 <- transform(ichr1, group = cut(dnachromStart,
-                                        breaks=seq(from = 0, to = chrsize$V2[1], by = 20000 )))
-binchr1
-
-
-dt <- data.table(binchr1)
-chr1_freq <- dt[,list(Freq = .N), by = list(rnaID,group)]
-write.table(as.matrix(chr1_freq),"~/Project/Data/freq1.txt", sep = "\t")
-chr1_freq
+#Read size file
 chrsize <- fread("~/Project/Data/NiGa/D13.sizes",header=FALSE,stringsAsFactors = FALSE,quote = "")
 chrsize <- chrsize[order(as.numeric(as.character(chrsize$V1)))]
 
@@ -44,10 +30,7 @@ for (i in 1:length(unique(yyy$rnachrom))){
 }
 
 
-bin[[1]]
-cpt <- data.frame(bin[[1]]$rnaID,bin[[1]]$group)
-ppt <- as.data.frame.matrix(table(cpt))
-ppt
+
 chr_freq = NULL
 test = NULL
 t = NULL
@@ -69,11 +52,10 @@ all_chr_freq <- all_chr_freq[with(all_chr_freq,order(as.numeric(column_label),as
 chrMax <- yyy[,max(dnachromEnd),by="dnachrom"]
 
 
-test[9]
 ##########
-rmap <- fread("~/Project/Data/Des/fin.rmap",header=FALSE,stringsAsFactors = FALSE,quote = "")
+rmap <- fread("~/Project/Data/Des/D13.rmap",header=FALSE,stringsAsFactors = FALSE,quote = "")
 colnames(rmap) <- c('chrom','start','end','Frag_id')
-baitmap <- fread("~/Project/Data/Des/fin.baitmap",header=FALSE,stringsAsFactors = FALSE,quote = "")
+baitmap <- fread("~/Project/Data/Des/D13.baitmap",header=FALSE,stringsAsFactors = FALSE,quote = "")
 colnames(baitmap) <- c('chrom','start','end','Frag_id','bait')
 
 all_chr_freq$intg <- as.character(all_chr_freq$group)
@@ -84,6 +66,11 @@ a = str_split_fixed(all_chr_freq$intg,",",2)
 foo <- data.frame(do.call('rbind',strsplit(all_chr_freq$intg,',',fixed = TRUE)))
 ID = NULL
 N = NULL
+foo$X3 <- all_chr_freq$column_label
+foo$X1 <- as.character(foo$X1)
+foo$X2 <- as.character(foo$X2)
+foo$X1 <- as.numeric(foo$X1)
+foo$X2 <- as.numeric(foo$X2)
 for (j in 1:length(rmap$chrom)){
   for (i in 1:length(all_chr_freq$column_label)){
     if ((rmap$chrom[j] == foo$X3[i]) && (between(rmap$start[j],foo$X1[i],foo$X2[i])) && (!(rmap$Frag_id[j] %in% baitmap$Frag_id))){
@@ -104,11 +91,7 @@ f <- function(vec, id){
     all_chr_freq$name <- x$name[mapply(f, y$location, y$id_number)]))
 }
 
-foo$X3 <- all_chr_freq$column_label
-foo$X1 <- as.character(foo$X1)
-foo$X2 <- as.character(foo$X2)
-foo$X1 <- as.numeric(foo$X1)
-foo$X2 <- as.numeric(foo$X2)
+
 for(i in length(foo$X1)){
   for (j in length(rmap$chrom)){
     if (foo$X3[i] == rmap$chrom[j]){
