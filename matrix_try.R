@@ -6,13 +6,10 @@ library(dplyr)
 library(plyr)
 library(stringr)
 #Read file
-yyy = fread("~/Project/Data/NiGa/Day13_with.bedpe",header=FALSE,stringsAsFactors = FALSE,quote = "")
+yyy = fread("~/Project/Data/NiGa/Day13_done.bedpe",header=FALSE,stringsAsFactors = FALSE,quote = "")
 #colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','cigar','ignore','rnaStrand','dnaStrand','rnQual','dnaQua','rnaID')
 colnames(yyy) <- c('rnachrom','rnachromStart','rnachromEnd','dnachrom','dnachromStart','dnachromEnd','rnaID')
 
-#Make length colums
-yyy$len <- ((yyy$dnachromStart+yyy$dnachromEnd)/2-(yyy$rnachromStart+yyy$rnachromEnd)/2)
-yyy <- yyy[with(yyy,order(as.numeric(rnachrom),as.numeric(rnachromStart))),]
 
 
 
@@ -23,8 +20,10 @@ chrsize <- chrsize[order(as.numeric(as.character(chrsize$V1)))]
 
 ##############
 chkl <- split(yyy,yyy$dnachrom)
+rm(yyy)
+gc()
 bin = NULL
-for (i in 1:length(unique(yyy$rnachrom))){
+for (i in 1:22){
   bin[[i]] <- transform(chkl[[i]], group = cut(dnachromStart,
                                            breaks=seq(from = 0, to = chrsize$V2[i], by = 20000 )))
 }
@@ -37,8 +36,12 @@ t = NULL
 for (i in 1:length(bin)){
   #bin[[i]]$group <- paste(bin[[i]]$rnachrom,bin[[i]]$group)
   #test[[i]] <- data.frame(bin[[i]]$rnaID,bin[[i]]$group)
-  chr_freq[[i]] <- bin[[i]][,list(Freq = .N), by = list(rnaID,group)]
+  bin[[i]] <-transform(bin[[i]], Freq = ave(seq(nrow(bin[[i]])),group, FUN = length))
   #t[[i]] <- as.data.frame.matrix(table(test[[i]]))
+}
+
+for  (i in 1:22){
+  bin[[i]] <- bin[[i]][,-c(2:3)]
 }
 
 
@@ -49,7 +52,7 @@ all_chr_freq <- all_chr_freq[all_chr_freq$rnaID != "Intergenic"]
 all_chr_freq <- all_chr_freq[with(all_chr_freq,order(as.numeric(column_label),as.numeric(group))),]
 
 
-chrMax <- yyy[,max(dnachromEnd),by="dnachrom"]
+
 
 
 ##########
@@ -58,11 +61,34 @@ colnames(rmap) <- c('chrom','start','end','Frag_id')
 baitmap <- fread("~/Project/Data/Des/D13.baitmap",header=FALSE,stringsAsFactors = FALSE,quote = "")
 colnames(baitmap) <- c('chrom','start','end','Frag_id','bait')
 
+#Defining function to check integer(0)
+is.integer0 <- function(x){
+  is.integer(x) && length(x) == 0L
+}
+
+#getting otherendID column
+rsplit <- split(rmap,rmap$chrom)
+otherID = NULL
+for (k in 1:22){
+  for (i in 1:length(bin[[k]]$rnachrom)){
+    if (rsplit[[k]]$Frag_id < 143730){
+      print(i)
+      if (is.integer0(rsplit[[k]]$Frag_id[which(rsplit[[k]]$start <= bin[[k]]$dnachromStart[i] & rsplit[[k]]$end >= bin[[k]]$dnachromStart[i])])){
+        bin[[k]]$otherID[i] <- NA
+    } else{
+        bin[[k]]$otherID[i] <- rsplit[[k]]$Frag_id[which(rsplit[[k]]$start <= bin[[k]]$dnachromStart[i] & rsplit[[k]]$end >= bin[[k]]$dnachromStart[i])]
+    }
+  }
+}
+
+
+
+
 all_chr_freq$intg <- as.character(all_chr_freq$group)
 all_chr_freq$intg = gsub("\\]","",all_chr_freq$intg)
 all_chr_freq$intg = gsub("\\(","",all_chr_freq$intg)
 
-a = str_split_fixed(all_chr_freq$intg,",",2)
+#a = str_split_fixed(all_chr_freq$intg,",",2)
 foo <- data.frame(do.call('rbind',strsplit(all_chr_freq$intg,',',fixed = TRUE)))
 ID = NULL
 N = NULL
@@ -71,35 +97,22 @@ foo$X1 <- as.character(foo$X1)
 foo$X2 <- as.character(foo$X2)
 foo$X1 <- as.numeric(foo$X1)
 foo$X2 <- as.numeric(foo$X2)
-for (j in 1:length(rmap$chrom)){
-  for (i in 1:length(all_chr_freq$column_label)){
-    if ((rmap$chrom[j] == foo$X3[i]) && (between(rmap$start[j],foo$X1[i],foo$X2[i])) && (!(rmap$Frag_id[j] %in% baitmap$Frag_id))){
-      print(rmap$Frag_id[j])
-      all_chr_freq$otherID[i] <-rmap$Frag_id[j]
-    }
-  }
-}
+#for (j in 1:length(rmap$chrom)){
+#  for (i in 1:length(all_chr_freq$column_label)){
+#    if ((rmap$chrom[j] == foo$X3[i]) && (between(rmap$start[j],foo$X1[i],foo$X2[i])) && (!(rmap$Frag_id[j] %in% baitmap$Frag_id))){
+#      print(rmap$Frag_id[j])
+#      all_chr_freq$otherID[i] <-rmap$Frag_id[j]
+#    }
+#  }
+#}
 all_chr_freq$baitID <- baitmap$Frag_id[match(all_chr_freq$rnaID,baitmap$bait)]
 all_chr_freq$otherLen <- rmap$otherLen[match(all_chr_freq$otherID,rmap$Frag_id)]
 
-all_chr_freq$otherID <- rmap$Frag_id[between(rmap$start,foo$X1,foo$X2)]
-ID
+
 baitmap$bait[1]
-f <- function(vec, id){
-  if(length(.foo <- which(vec >= foo$X1 & vec <= foo$X2 & id == all_chr_freq$column_label))) .foo else NA
-  }
-    all_chr_freq$name <- x$name[mapply(f, y$location, y$id_number)]))
-}
 
 
-for(i in length(foo$X1)){
-  for (j in length(rmap$chrom)){
-    if (foo$X3[i] == rmap$chrom[j]){
-      which(rmap$start[j] >=foo$X1[i] & rmap$start[j] <= foo$X2[i])
-        print(j)
-    }
-  }
-}
+
 
 for (i in 1:length(foo$X1)){
   for (j in 1:22){
@@ -111,7 +124,7 @@ for (i in 1:length(foo$X1)){
   
 #turn factor to character , uuse genomic ranges. 
 
-
+#Defining otherendLength column
 for (i in 1:length(rmap$chrom)){
   if (!(rmap$Frag_id[i] %in% baitmap$Frag_id)){
     rmap$otherLen[i] <- rmap$end[i]-rmap$start[i]
@@ -119,8 +132,17 @@ for (i in 1:length(rmap$chrom)){
     rmap$otherLen[i] <- NA
   }
 }
-for (i in 1:length(all_chr_freq$column_label)){
-  all_chr_freq$distLen[i] <- min(baitmap$start[which(all_chr_freq$rnaID[i] == baitmap$bait)]-foo$X1[i],baitmap$start[which(all_chr_freq$rnaID[i] == baitmap$bait)]-foo$X2[i],baitmap$end[which(all_chr_freq$rnaID[i] == baitmap$bait)]-foo$X1[i],baitmap$end[which(all_chr_freq$rnaID[i] == baitmap$bait)]-foo$X2[i])
+
+#Distal column
+for (k in 1:22){
+  for (i in 1:length(bin[[k]]$rnachrom)){
+    print(i)
+    if (bin[[k]]$rnachrom[i] != bin[[k]]$dnachrom[i]){
+      bin[[k]]$distLen[i] <- NA
+  } else {
+        bin[[k]]$distLen[i] <- min(baitmap$start[which(bin[[k]]$rnaID[i] == baitmap$bait)]-bin[[k]]$dnachromStart[i],baitmap$start[which(bin[[k]]$rnaID[i] == baitmap$bait)]-bin[[k]]$dnachromEnd[i],baitmap$end[which(bin[[k]]$rnaID[i] == baitmap$bait)]-bin[[k]]$dnachromStart[i],baitmap$end[which(bin[[k]]$rnaID[i] == baitmap$bait)]-bin[[k]]$dnachromEnd[i])
+    }
+  }  
 }
 
 write.table(all_chr_freq,"~/Project/Data/D13.chinput",sep = "\t")
